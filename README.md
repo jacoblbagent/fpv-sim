@@ -5,16 +5,42 @@ with the keyboard, through modular cartoon worlds, with a gate-course time trial
 
 **No live link yet** — runs locally as a static site (see below).
 
-## Quick start
+## Running it
+
+No install step and no build step — no `npm install`, no bundler. Three.js is
+vendored in `vendor/three.module.js`, so nothing is fetched at runtime.
 
 ```bash
 cd ~/Code/fpv-sim
-python3 -m http.server 8099
-# open http://localhost:8099/
+python3 -m http.server 8099      # any static server works, any free port
+# then open http://localhost:8099/
 ```
 
-A static server is required — the app uses ES modules, which browsers block over
-`file:///`. Any static server works (`npx serve`, `python3 -m http.server`, etc).
+Leave the server running while you fly; stop it with Ctrl-C. Other options:
+
+```bash
+npx serve -l 8099                # node alternative
+npx http-server -p 8099
+```
+
+Details that matter:
+
+- **A static server is required.** The app is ES modules, and browsers block
+  module imports over `file:///` — opening `index.html` directly gives a blank
+  blue page with no error. Serve it.
+- **Serve from the project root**, not a subdirectory. The import map resolves
+  `three` to `./vendor/three.module.js` and every script is referenced relatively,
+  so the app must be the server's document root.
+- **`python3 -m http.server` binds only to localhost** by default. To fly from
+  another device on your network (phone, tablet, another laptop), bind all
+  interfaces: `python3 -m http.server 8099 --bind 0.0.0.0`, then browse to
+  `http://<your-lan-ip>:8099/`. A phone has no WASD, so you'd want a radio
+  plugged into that device, or a Bluetooth gamepad.
+- **First run:** hardware requirements are just a WebGL2-capable browser. Gamepad
+  support needs Chrome/Edge/Firefox; Safari's Gamepad API support is partial.
+- Settings (controller mapping, rates, camera tilt, world, HUD toggles) are saved
+  in `localStorage` per browser — clearing site data resets them to defaults, as
+  does **Esc → World → Restore defaults**.
 
 ## Controls
 
@@ -31,6 +57,19 @@ A static server is required — the app uses ES modules, which browsers block ov
 
 Keyboard throttle is integrated (hold `W` to spool up, `S` to spool down) so it
 behaves like a ratchet throttle rather than snapping to full.
+
+### First flight
+
+1. Load the page — the start card appears over the world; the sim is live but frozen.
+2. **FLY** starts the sim (and unlocks audio — browsers won't play the motor whine
+   before a user gesture).
+3. **Arm** (`Q`, or your pad button). You spawn disarmed on the launch pad; props
+   only spin once armed. The front LED blinks while disarmed and goes solid when armed.
+4. Hold **`W`** to spool up past hover (about 45% throttle) and climb.
+5. Push the pitch stick forward (`↑`) to fly forward; `C` switches to the chase or
+   line-of-sight view if you want to watch the airframe.
+6. Arm/disarm toggles at any time. **`R`** respawns you on the pad; a hard impact
+   (above ~5.2 m/s) destroys the props and shows the crash card, which respawns you.
 
 ### Using a real controller
 
@@ -69,6 +108,8 @@ js/
     props.js            shared cartoon prop vocabulary (trees, rocks, barns, gates…)
     meadow.js           rolling farmland world + gate course
     canyon.js           red rock slot canyon + gate course
+tools/verify/           headless browser checks (see Verification below)
+vendor/three.module.js  Three.js r160, vendored — nothing loads from a CDN
 ```
 
 ## Adding an environment
@@ -107,3 +148,35 @@ attitude hold with a 35° tilt limit.
 
 Impact above ~5.2 m/s bends props and ends the flight. Battery sag reduces
 available thrust as the pack drains.
+
+## Verification
+
+`tools/verify/` holds headless browser checks that drive the real app (Chromium
+over CDP via `playwright-core`) — they are not unit tests, they load the sim and
+fly it.
+
+```bash
+# with the static server already running on :8099
+NODE_PATH=/path/to/node_modules node tools/verify/regression.js   # 25 checks
+NODE_PATH=/path/to/node_modules node tools/verify/input-signs.js  # stick directions
+NODE_PATH=/path/to/node_modules node tools/verify/controller.js   # radio path
+```
+
+`playwright-core` is not a project dependency (the app itself has none) — point
+`NODE_PATH` at wherever you have it installed, e.g.
+
+```bash
+mkdir -p /tmp/fpv-verify && cd /tmp/fpv-verify && npm i playwright-core
+NODE_PATH=/tmp/fpv-verify/node_modules node tools/verify/regression.js
+```
+
+Env overrides: `CHROME_PATH` (a Chromium/Chrome binary; defaults to the Playwright
+cache path) and `BASE_URL` (defaults to `http://localhost:8099`).
+
+What `regression.js` covers: boot with a clean console, arming, climb and forward
+flight, gate-pass detection, hard-impact crash → crash card → respawn, switching
+worlds (including out of a crashed state, checking no environment meshes leak),
+all three camera views, a custom arm key taking effect, settings persisting across
+a reload, and restore-defaults. `input-signs.js` asserts the six stick directions
+match real FPV behaviour. `controller.js` fakes a gamepad to verify axis mapping,
+expo, the pad arm button, the learn-button flow, and keyboard fallback on unplug.

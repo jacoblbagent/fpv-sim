@@ -1,0 +1,5 @@
+# The app itself has no dependencies — this is only for tooling.
+node_modules/
+package-lock.json
+package.json
+.DS_Store
