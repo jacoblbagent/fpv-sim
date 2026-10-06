@@ -64,8 +64,11 @@ Details that matter:
 Keyboard keys ramp the simulated sticks instead of slamming to full deflection:
 a tap is a small nudge, a hold builds smoothly, and the throttle behaves as a
 ratchet (hold `W` to spool up, `S` to spool down). Defaults are deliberately
-gentle — the sticks take ~5.6s to reach full throw and the throttle ~6.7s to
-travel idle-to-full, so a press is a small nudge on every axis. Releasing a key
+gentle — the sticks take ~5.6s to reach full throw, so a press is a small nudge on
+every axis. The throttle is the one exception: it is a ratchet rather than a
+spring-centred axis, so it only has to be slow enough to trim, and it travels
+about twice as fast (~2.9s idle-to-full) — a whoop needs ~50% stick to hover, so
+a takeoff is a deliberate ~1.4s hold rather than a chore. Releasing a key
 springs the stick home faster than it wound up (~0.6s), so letting go actually
 stops the rotation rather than coasting while the stick crawls back. Expo and the
 deadzone are gimbal-centre aids and are skipped on the keyboard path, where they
@@ -245,7 +248,7 @@ fly it.
 ```bash
 # with the static server already running on :8099
 NODE_PATH=/path/to/node_modules node tools/verify/regression.js   # 26 checks
-NODE_PATH=/path/to/node_modules node tools/verify/arming-and-keys.js  # 23 checks
+NODE_PATH=/path/to/node_modules node tools/verify/arming-and-keys.js  # 24 checks
 NODE_PATH=/path/to/node_modules node tools/verify/input-signs.js  # stick directions
 NODE_PATH=/path/to/node_modules node tools/verify/controller.js   # radio path
 ```

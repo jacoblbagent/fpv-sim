@@ -33,7 +33,7 @@ export const DEFAULTS = {
   sound: true,
 
   // world / hud
-  env: 'meadow',
+  env: 'terminal',
   gates: true,
   showSticks: true,
   showOsd: true,

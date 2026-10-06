@@ -64,21 +64,44 @@ const snap = (page) => page.evaluate(() => {
   check('arm itself does not move the quad', moved < 0.05, `moved ${moved.toFixed(4)} m (armed=${justArmed.armed})`);
   check('arm resets throttle to idle', justArmed.thr < 0.06, `thr at arm=${justArmed.thr} (was ${beforeArm.keyThr} before)`);
 
-  // 3. throttle ramps gently rather than jumping to full
+  // 3. throttle ramps rather than jumping to full
+  // (measured over wall-clock seconds: the software rasteriser runs the sim a
+  // little slower than real time, so the figure lands under the nominal 0.35/s)
   const t1 = await snap(page);
   await page.waitForTimeout(1000);
   const t2 = await snap(page);
   const rate = t2.thr - t1.thr;
-  check('throttle ramps gently (~0.15/s, not instant)', rate > 0.08 && rate < 0.30, `+${rate.toFixed(2)} throttle per second`);
-  const climbFrom = t2.alt;
-  await page.waitForTimeout(1500);
-  s = await snap(page);
-  check('throttle burst gives a modest climb (not a launch)', (s.alt - climbFrom) < 14, `climb ${(s.alt - climbFrom).toFixed(1)} m in 1.5s`);
-  // the keyboard throttle is slow on purpose, so give it real time to spool up
-  await page.waitForTimeout(4000);
-  s = await snap(page);
-  check('sustained W does eventually spool up', s.thr > 0.6, `thr=${s.thr}`);
+  check('throttle ramps gently (~0.35/s, not instant)', rate > 0.15 && rate < 0.6, `+${rate.toFixed(2)} throttle per second`);
+  let spooled = t2.thr;
+  for (let i = 0; i < 20 && spooled < 0.7; i++) {
+    await page.waitForTimeout(300);
+    spooled = (await snap(page)).thr;
+  }
+  check('sustained W does eventually spool up', spooled > 0.7, `thr=${spooled}`);
   await page.keyboard.up('w');
+
+  // the ratchet holds where you left it — releasing W must not bleed throttle
+  await page.waitForTimeout(700);
+  const held = await snap(page);
+  check('throttle holds its position when released', Math.abs(held.thr - spooled) < 0.03, `thr=${held.thr} (was ${spooled})`);
+
+  // from idle on the deck a burst cannot launch it: a whoop needs ~50% stick to
+  // hover and the ratchet only reaches ~0.4 in a second, so the props cannot be
+  // at takeoff power on a tap
+  await page.evaluate(() => {
+    const f = window.__fpv.flight;
+    f.position.set(0, 0.2, 0); f.velocity.set(0, 0, 0);
+    window.__fpv.input.keyThrottle = 0; window.__fpv.input.sticks.thr = 0;
+  });
+  await page.waitForTimeout(500);
+  const burstFrom = (await snap(page)).alt;
+  await page.keyboard.down('w');
+  await page.waitForTimeout(1200);
+  s = await snap(page);
+  check('a 1.2s throttle burst cannot launch it', (s.alt - burstFrom) < 1.5, `climb ${(s.alt - burstFrom).toFixed(2)} m at thr=${s.thr}`);
+  await page.keyboard.up('w');
+  // leave it on the hover stop so the stick checks below have a stable platform
+  await page.evaluate(() => { window.__fpv.input.keyThrottle = 0.5; });
 
   // 4. keyboard stick: a tap is a small adjustment
   await page.evaluate(() => { const f = window.__fpv.flight; f.quaternion.identity(); f.angVel.set(0, 0, 0); f.velocity.set(0, 0, 0); f.position.set(0, 30, 0); });

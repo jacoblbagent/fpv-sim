@@ -22,7 +22,12 @@ const CONTROL_KEYS = new Set([
 // instead of slamming to full deflection on every press. Kept slow on purpose —
 // a press should be a small nudge on every axis, and a deliberate hold is what
 // takes you to a full throw.
-const KEY_THR_RATE = 0.15;     // idle -> full throttle in ~6.7s
+//
+// The throttle is the exception: it is a ratchet, not a spring-centred axis, so
+// it only has to be slow enough to trim precisely. It moves about twice as fast
+// as the sticks — a whoop needs ~50% stick to hover, so at 0.35/s a takeoff is a
+// deliberate ~1.4s hold rather than a chore.
+const KEY_THR_RATE = 0.35;     // idle -> full throttle in ~2.9s
 const KEY_STICK_RATE = 0.18;   // centre -> full deflection in ~5.6s
 // Releasing a key springs the stick back to centre faster than it winds up, so
 // letting go actually *stops* the rotation instead of coasting on while the

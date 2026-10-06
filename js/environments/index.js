@@ -20,13 +20,14 @@
 
 import { meadow } from './meadow.js';
 import { canyon } from './canyon.js';
+import { terminal } from './terminal.js';
 
-export const ENVIRONMENTS = { meadow, canyon };
+export const ENVIRONMENTS = { terminal, meadow, canyon };
 
 export function listEnvironments() {
   return Object.values(ENVIRONMENTS).map((e) => ({ id: e.id, label: e.label }));
 }
 
 export function getEnvironment(id) {
-  return ENVIRONMENTS[id] || ENVIRONMENTS.meadow;
+  return ENVIRONMENTS[id] || ENVIRONMENTS.terminal;
 }

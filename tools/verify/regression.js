@@ -24,7 +24,8 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
 
   check('boot: no error overlay', await page.evaluate(() => !document.getElementById('errbox')), '');
   check('boot: sim exposed', await page.evaluate(() => typeof window.__fpv === 'object'));
-  check('boot: 6 gates in meadow', (await page.evaluate(() => window.__fpv.env.gates.length)) === 6);
+  check('boot: terminal is the default world', (await page.evaluate(() => window.__fpv.env.id)) === 'terminal');
+  check('boot: 6 gates in terminal', (await page.evaluate(() => window.__fpv.env.gates.length)) === 6);
   check('boot: colliders built', (await page.evaluate(() => window.__fpv.env.colliders.length)) > 50);
 
   await page.click('#btn-fly');
@@ -84,7 +85,7 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
     window.__fpv.input.keyThrottle = 0;
     f.position.set(0, 6, 0); f.velocity.set(0, -22, 0);
   });
-  await page.waitForTimeout(3000);   // crash in meadow
+  await page.waitForTimeout(3000);   // crash in the terminal
   await page.evaluate(() => window.__fpv.S.set('env', 'canyon'));
   await page.waitForTimeout(2200);
   const cy = await page.evaluate(() => ({ env: window.__fpv.env.id, paused: window.__fpv.paused, crashed: window.__fpv.flight.crashed, gates: window.__fpv.env.gates.length, z: +window.__fpv.flight.position.z.toFixed(0) }));
@@ -146,7 +147,7 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
   await page.click('#btn-defaults');
   await page.waitForTimeout(800);
   const restored = await page.evaluate(() => ({ twr: window.__fpv.S.get('twr'), armKey: window.__fpv.S.get('armKey'), env: window.__fpv.env.id }));
-  check('restore defaults works', restored.twr === 4.0 && restored.armKey === 'KeyQ' && restored.env === 'meadow', JSON.stringify(restored));
+  check('restore defaults works', restored.twr === 4.0 && restored.armKey === 'KeyQ' && restored.env === 'terminal', JSON.stringify(restored));
 
   // --- wind: a breeze carries a hovering quad downwind ---------------------
 await page.evaluate(() => {
