@@ -238,13 +238,14 @@ function makeBenchRow(n = 6) {
   const back = flatBox(w, 0.62, 0.16, C.seat);
   back.position.set(0, 0.72, -0.3);
   g.add(back);
-  for (let i = 0; i < n; i++) {
-    const x = -w / 2 + 0.4 + i * 0.78;
-    const cushion = flatBox(0.62, 0.14, 0.5, i % 2 ? C.seat : C.seatAlt);
-    cushion.position.set(x, 0.41, 0.02);
-    g.add(cushion);
-    const arm = flatBox(0.12, 0.34, 0.56, C.metalDark);
-    arm.position.set(x - 0.39, 0.62, 0);
+  // one cushion run plus a pair of arm rails keeps the mesh count (and so the
+  // draw calls) low — this is a cartoon world, not a furniture catalogue
+  const cushion = flatBox(w - 0.3, 0.14, 0.5, C.seatAlt);
+  cushion.position.set(0, 0.41, 0.02);
+  g.add(cushion);
+  for (const s of [-1, 1]) {
+    const arm = flatBox(0.14, 0.36, 0.58, C.metalDark);
+    arm.position.set(s * (w / 2 - 0.07), 0.62, 0);
     g.add(arm);
   }
   g.userData.boxes = [{ pos: [0, 0.42, 0], half: [w / 2, 0.42, 0.36] }];
@@ -266,17 +267,10 @@ function makeFoodTable() {
   for (let i = 0; i < 4; i++) {
     const a = i * Math.PI / 2 + Math.PI / 4;
     const cx = Math.cos(a) * 1.05, cz = Math.sin(a) * 1.05;
-    const seat = flatBox(0.42, 0.1, 0.42, C.orange);
-    seat.position.set(cx, 0.46, cz);
-    seat.rotation.y = -a;
-    g.add(seat);
-    const backr = flatBox(0.42, 0.5, 0.1, C.orange);
-    backr.position.set(Math.cos(a) * 1.28, 0.7, Math.sin(a) * 1.28);
-    backr.rotation.y = -a;
-    g.add(backr);
-    const leg = flatBox(0.08, 0.44, 0.08, C.metalDark);
-    leg.position.set(cx, 0.22, cz);
-    g.add(leg);
+    const chair = flatBox(0.44, 0.9, 0.44, C.orange);
+    chair.position.set(cx, 0.45, cz);
+    chair.rotation.y = -a;
+    g.add(chair);
   }
   g.userData.boxes = [{ pos: [0, 0.5, 0], half: [1.5, 0.5, 1.5] }];
   return g;
@@ -322,13 +316,11 @@ function makeShelfUnit(len = 3.4) {
     const shelf = flatBox(len - 0.2, 0.06, 0.54, 0xb9ad95);
     shelf.position.set(0, y, 0.02);
     g.add(shelf);
-    let x = -len / 2 + 0.25;
-    while (x < len / 2 - 0.3) {
-      const bw = rand(rng, 0.08, 0.2);
-      const bk = flatBox(bw, rand(rng, 0.24, 0.34), 0.34, C.book[Math.floor(rng() * C.book.length)]);
-      bk.position.set(x + bw / 2, y + 0.18, 0.06);
-      g.add(bk);
-      x += bw + 0.03;
+    // two coloured runs per shelf read as stocked rows without a mesh per book
+    for (let t = 0; t < 2; t++) {
+      const run = flatBox((len - 0.5) / 2, rand(rng, 0.24, 0.32), 0.34, C.book[Math.floor(rng() * C.book.length)]);
+      run.position.set(-len / 4 + t * (len / 2), y + 0.17, 0.06);
+      g.add(run);
     }
   }
   g.userData.boxes = [{ pos: [0, 1.05, 0], half: [len / 2, 1.05, 0.3] }];
@@ -383,9 +375,10 @@ function makeMezzanineRail(len) {
   const lip = flatBox(len, 0.22, 0.4, C.metalDark);
   lip.position.set(0, MEZZ + 0.05, 0.1);
   g.add(lip);
-  for (let i = 0; i <= Math.round(len / 2.4); i++) {
+  const nPosts = Math.round(len / 6);
+  for (let i = 0; i <= nPosts; i++) {
     const post = flatBox(0.1, 1.0, 0.1, C.metalDark);
-    post.position.set(-len / 2 + i * (len / Math.round(len / 2.4)), MEZZ + 0.9, 0);
+    post.position.set(-len / 2 + i * (len / nPosts), MEZZ + 0.9, 0);
     g.add(post);
   }
   const rail = flatBox(len, 0.14, 0.18, C.navy);
@@ -442,6 +435,7 @@ function makeCarousel() {
       [C.navy, C.red, 0x8a6a4a, C.teal][Math.floor(rng() * 4)]);
     bag.position.set(rand(rng, -5, 5), 1.4, rand(rng, -1.4, 1.4));
     bag.rotation.y = rng() * 0.6;
+    bag.userData.dynamic = true;          // rides the belt, so it is not batched
     g.add(bag);
     bags.push(bag);
   }
@@ -512,8 +506,12 @@ function makeAircraft() {
   tailcone.rotation.z = -Math.PI / 2;
   tailcone.position.set(22.4, 3.6, 0);
   g.add(tailcone);
-  // belly stripe + tail livery
-  const stripe = new THREE.Mesh(new THREE.CylinderGeometry(3.05, 3.05, 40, 18, 1, true, 0, Math.PI * 0.42), toon(C.blue));
+  // cheatline down the side that faces the terminal: the swept arc is centred
+  // on the cylinder's +Z, which the 90° roll below keeps pointing at the glass
+  const stripe = new THREE.Mesh(
+    new THREE.CylinderGeometry(3.05, 3.05, 40, 18, 1, true, -Math.PI * 0.21, Math.PI * 0.42),
+    toon(C.blue)
+  );
   stripe.rotation.z = Math.PI / 2;
   stripe.position.y = 3.6;
   g.add(stripe);
@@ -561,8 +559,8 @@ function makeAircraft() {
     g.add(pylon);
   }
   // cabin windows + doors
-  for (let i = 0; i < 16; i++) {
-    const x = -17 + i * 2.2;
+  for (let i = 0; i < 9; i++) {
+    const x = -16 + i * 4.2;
     for (const s of [-1, 1]) {
       const w = flatBox(0.5, 0.42, 0.08, 0x3d4a58);
       w.position.set(x, 4.0, s * 2.98);
@@ -707,6 +705,7 @@ function makeControlTower() {
   const dish = flatBox(1.8, 0.12, 0.3, 0xd8dde2);
   dish.rotation.z = 0.5;
   hub.add(dish);
+  hub.traverse((o) => { o.userData.dynamic = true; });   // the radar turns
   g.add(hub);
   g.userData.boxes = [{ pos: [0, 13, 0], half: [2.6, 13, 2.6] }];
   g.userData.extra = hub;
@@ -821,7 +820,7 @@ export const terminal = {
     root.add(ceil);
     shellBoxes.push({ pos: [0, CEIL + 0.3, (ZF + ZB) / 2], half: [HX + 0.5, 0.3, (ZB - ZF) / 2 + 0.5] });
     // ceiling light troughs
-    for (let ix = -4; ix <= 4; ix++) {
+    for (let ix = -4; ix <= 4; ix += 2) {
       for (let iz = -1; iz <= 1; iz++) {
         const lamp = flatBox(6.5, 0.18, 1.4, C.panel);
         lamp.position.set(ix * 11, CEIL - 0.25, iz * 13);
@@ -881,7 +880,7 @@ export const terminal = {
     this._place = place;
 
     // ---- check-in row along the back wall -----------------------------------
-    for (const x of [-42, -30, -18, 6, 18, 30, 42]) {
+    for (const x of [-42, -26, 8, 22, 36]) {
       place(makeCheckInDesk(), x, 19.3, Math.PI);
     }
 
@@ -890,9 +889,9 @@ export const terminal = {
     place(makeXrayScanner(), -16.5, -13.5, 0);
     place(makeXrayScanner(), 15.0, -13.5, 0);
     // queue stanchions
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 5; i++) {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.95, 8), toon(C.metal));
-      post.position.set(-16 + i * 5.4, 0.48, -10.5);
+      post.position.set(-13 + i * 6.5, 0.48, -10.5);
       root.add(post);
       const base = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 10), toon(C.rubber));
       base.position.set(post.position.x, 0.03, -10.5);
@@ -901,18 +900,18 @@ export const terminal = {
 
     // ---- seating blocks -----------------------------------------------------
     for (const blockX of [-44, 24]) {
-      for (let r = 0; r < 3; r++) {
+      for (let r = 0; r < 2; r++) {
         for (let c = 0; c < 3; c++) {
           place(makeBenchRow(6), blockX + c * 6.6, -8 + r * 3.4, Math.PI);
         }
       }
       // a few single benches facing the windows
-      for (let c = 0; c < 3; c++) place(makeBenchRow(4), blockX + c * 4.6, 6.5, 0);
+      for (let c = 0; c < 2; c++) place(makeBenchRow(4), blockX + c * 4.6, 6.5, 0);
     }
 
     // ---- food court (right, back) -------------------------------------------
     place(makeCafeCounter(9), 48.5, 13.5, Math.PI / 2);
-    for (let r = 0; r < 3; r++) {
+    for (let r = 0; r < 2; r++) {
       for (let c = 0; c < 3; c++) place(makeFoodTable(), 30 + c * 5.5, 6 + r * 5.5, 0);
     }
     // tray stations
@@ -998,9 +997,9 @@ export const terminal = {
       root.add(w);
     }
     // cones along the taxi line
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 8; i++) {
       const cone = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.6, 8), toon(C.orange));
-      cone.position.set(-18 + i * 3.6, 0.3, -26);
+      cone.position.set(-16 + i * 4.4, 0.3, -26);
       root.add(cone);
       const band = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.09, 8), toon(0xf4f2ea));
       band.position.set(cone.position.x, 0.33, cone.position.z);
@@ -1011,7 +1010,7 @@ export const terminal = {
     if (tower.userData.extra) this._dyn.push({ radar: tower.userData.extra });
 
     // ---- clouds -------------------------------------------------------------
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 8; i++) {
       const c = makeCloud(rng);
       c.position.set(rand(rng, -220, 220), 46 + rng() * 40, rand(rng, -260, 60));
       root.add(c);
@@ -1053,6 +1052,66 @@ export const terminal = {
         center: new THREE.Vector3(b.pos[0], b.pos[1], b.pos[2]),
         half: new THREE.Vector3(b.half[0], b.half[1], b.half[2]),
       });
+    }
+
+    // ---- static batching ----------------------------------------------------
+    // This world is ~900 small props. Left alone that is ~400 draw calls, which
+    // costs more than it looks like it should — so everything static gets baked
+    // into one mesh per material (transparent and animated meshes excepted).
+    this._batchStatic(root);
+  },
+
+  /** Fold every static opaque mesh under `root` into per-material batches.
+   *  Every prop calls `toon()` for itself, so meshes are keyed by what actually
+   *  distinguishes one material from another — type and colour — plus the
+   *  shadow flags, so a ceiling deliberately kept out of the sun does not start
+   *  casting after batching. */
+  _batchStatic(root) {
+    const buckets = new Map();
+    const originals = [];
+    root.updateMatrixWorld(true);
+    root.traverse((o) => {
+      if (!o.isMesh || o.userData.dynamic) return;
+      const mat = o.material;
+      if (!mat || Array.isArray(mat) || mat.transparent) return;
+      const key = `${mat.type}|${mat.color.getHexString()}|${o.castShadow ? 1 : 0}|${o.receiveShadow ? 1 : 0}`;
+      let bucket = buckets.get(key);
+      if (!bucket) {
+        bucket = { mat, cast: o.castShadow, receive: o.receiveShadow, geos: [] };
+        buckets.set(key, bucket);
+      }
+      // always take a private copy: cloning a mesh shares its geometry
+      const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      g.applyMatrix4(o.matrixWorld);
+      bucket.geos.push(g);
+      originals.push(o);
+    });
+    if (!buckets.size) return;
+
+    for (const b of buckets.values()) {
+      let count = 0;
+      for (const g of b.geos) count += g.attributes.position.count;
+      const pos = new Float32Array(count * 3);
+      const nor = new Float32Array(count * 3);
+      let at = 0;
+      for (const g of b.geos) {
+        pos.set(g.attributes.position.array, at * 3);
+        if (g.attributes.normal) nor.set(g.attributes.normal.array, at * 3);
+        at += g.attributes.position.count;
+        g.dispose();
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+      const mesh = new THREE.Mesh(geo, b.mat);
+      mesh.name = 'batch';
+      mesh.castShadow = b.cast;
+      mesh.receiveShadow = b.receive;
+      root.add(mesh);
+    }
+    for (const o of originals) {
+      if (o.parent) o.parent.remove(o);
+      if (o.geometry) o.geometry.dispose();
     }
   },
 

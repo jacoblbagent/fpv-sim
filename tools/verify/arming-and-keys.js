@@ -38,6 +38,15 @@ const snap = (page) => page.evaluate(() => {
   await page.waitForTimeout(3200);
   await page.click('#btn-fly');
   await page.waitForTimeout(300);
+
+  // These checks are about arming and the keyboard axes, not about the world —
+  // and several of them climb at full power and then free-fall from 25–30 m.
+  // Fly that in a world with open sky: the default interior world has a roof,
+  // and a full-power climb into it bends props by design, which would leave
+  // every later step testing a crashed quad instead of the sticks.
+  await page.evaluate(() => window.__fpv.S.set('env', 'meadow'));
+  await page.waitForTimeout(600);
+
   await page.evaluate(() => {
     window.__fpv.S.set('flightMode', 'angle');
     // these checks are about arming/throttle/stick behaviour, not weather: a

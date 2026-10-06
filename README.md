@@ -143,6 +143,7 @@ js/
     index.js            environment registry + contract
     terrain.js          shared heightfield terrain builder + hill rings
     props.js            shared cartoon prop vocabulary (trees, rocks, barns, gates…)
+    terminal.js         airport terminal world (the default) + gate course
     meadow.js           rolling farmland world + gate course
     canyon.js           red rock slot canyon + gate course
 tools/verify/           headless browser checks (see Verification below)
@@ -247,7 +248,7 @@ fly it.
 
 ```bash
 # with the static server already running on :8099
-NODE_PATH=/path/to/node_modules node tools/verify/regression.js   # 26 checks
+NODE_PATH=/path/to/node_modules node tools/verify/regression.js   # 27 checks
 NODE_PATH=/path/to/node_modules node tools/verify/arming-and-keys.js  # 24 checks
 NODE_PATH=/path/to/node_modules node tools/verify/input-signs.js  # stick directions
 NODE_PATH=/path/to/node_modules node tools/verify/controller.js   # radio path

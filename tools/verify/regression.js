@@ -7,6 +7,22 @@ const BASE = process.env.BASE_URL || 'http://localhost:8099';
 const results = [];
 const check = (name, ok, detail) => { results.push({ name, ok, detail }); console.log((ok ? 'PASS ' : 'FAIL ') + name + '  ' + (detail || '')); };
 
+// Poll the page until `expr` returns something truthy, or give up.
+// These suites run on a software rasteriser, and the sim deliberately clamps
+// its timestep (dt <= 0.05 s) so it cannot tunnel through geometry — which means
+// at ~13 fps a wall-clock second only advances the sim ~0.65 s. Waiting on the
+// sim's own progress instead of the clock keeps the mechanics checks honest on
+// a slow (or a heavier, enclosed) world.
+async function waitFor(page, expr, timeoutMs = 6000) {
+  const t0 = Date.now();
+  for (;;) {
+    const v = await page.evaluate(expr);
+    if (v) return v;
+    if (Date.now() - t0 > timeoutMs) return null;
+    await page.waitForTimeout(100);
+  }
+}
+
 (async () => {
   const browser = await chromium.launch({
     executablePath: path,
@@ -42,15 +58,31 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
 
   // --- takeoff + forward flight
   await page.evaluate(() => { window.__fpv.input.keyThrottle = 0.85; });
-  await page.waitForTimeout(1800);
-  const climb = await page.evaluate(() => +window.__fpv.flight.position.y.toFixed(1));
-  check('climbs under throttle', climb > 2.5, 'alt ' + climb);
+  const climb = await waitFor(page, () => {
+    const y = window.__fpv.flight.position.y;
+    return y > 2.5 ? +y.toFixed(1) : null;
+  });
+  check('climbs under throttle', climb !== null && climb > 2.5, 'alt ' + climb);
 
+  // Give the run some airspace and start it from a level deck: at full power a
+  // pitched quad climbs, and the terminal's concourse has a roof over it. This
+  // keeps the check about forward translation, not about the nearest ceiling.
+  await page.evaluate(() => {
+    const f = window.__fpv.flight;
+    f.position.set(0, 20, -50);
+    f.velocity.set(0, 0, 0);
+    f.angVel.set(0, 0, 0);
+    f.quaternion.set(0, 1, 0, 0);      // 180° about Y: heading -Z, as on spawn
+  });
   await page.keyboard.down('ArrowUp');
-  await page.waitForTimeout(1800);
+  const fwd = await waitFor(page, () => {
+    const f = window.__fpv.flight;
+    return f.distance > 12 && f.speed > 6
+      ? { spd: +f.speed.toFixed(1), pitch: +f.pitchDeg.toFixed(0), dist: +f.distance.toFixed(1) }
+      : null;
+  });
   await page.keyboard.up('ArrowUp');
-  const fwd = await page.evaluate(() => ({ spd: +window.__fpv.flight.speed.toFixed(1), pitch: +window.__fpv.flight.pitchDeg.toFixed(0), dist: +window.__fpv.flight.distance.toFixed(0) }));
-  check('forward flight translates', fwd.spd > 6 && fwd.dist > 10, JSON.stringify(fwd));
+  check('forward flight translates', fwd ? (fwd.spd > 6 && fwd.dist > 10) : false, JSON.stringify(fwd));
 
   // --- gate detection by sitting in the ring plane
   await page.evaluate(() => {
