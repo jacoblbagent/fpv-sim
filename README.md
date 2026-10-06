@@ -1,14 +1,20 @@
 # FPV Sim
 
+**🔗 Live:** https://jacoblbagent.github.io/fpv-sim/
+
 A browser quadcopter simulator. Fly with a real FPV radio (USB joystick mode) or
 with the keyboard, through modular cartoon worlds, with a gate-course time trial.
 
-**No live link yet** — runs locally as a static site (see below).
+Deployed as a static site to GitHub Pages, served from the `main` branch root —
+there is no build step, so what you see in the repo is exactly what runs.
 
 ## Running it
 
-No install step and no build step — no `npm install`, no bundler. Three.js is
-vendored in `vendor/three.module.js`, so nothing is fetched at runtime.
+**Deployed:** https://jacoblbagent.github.io/fpv-sim/ — nothing to run, just open it
+(a radio or gamepad works there too, since it's all client-side).
+
+Locally, no install step and no build step — no `npm install`, no bundler.
+Three.js is vendored in `vendor/three.module.js`, so nothing is fetched at runtime.
 
 ```bash
 cd ~/Code/fpv-sim
