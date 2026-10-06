@@ -64,7 +64,7 @@ const snap = (page) => page.evaluate(() => {
   await page.waitForTimeout(1000);
   const t2 = await snap(page);
   const rate = t2.thr - t1.thr;
-  check('throttle ramps gently (~0.45/s, not instant)', rate > 0.2 && rate < 0.75, `+${rate.toFixed(2)} throttle per second`);
+  check('throttle ramps gently (~0.28/s, not instant)', rate > 0.15 && rate < 0.55, `+${rate.toFixed(2)} throttle per second`);
   const climbFrom = t2.alt;
   await page.waitForTimeout(1500);
   s = await snap(page);
@@ -77,9 +77,9 @@ const snap = (page) => page.evaluate(() => {
   await page.keyboard.down('ArrowRight');
   await page.waitForTimeout(150);
   s = await snap(page);
-  check('keyboard tap: stick barely moves (150ms)', s.sr > 0.05 && s.sr < 0.35, `stick=${s.sr} roll=${s.roll}°`);
+  check('keyboard tap: stick barely moves (150ms)', s.sr > 0.03 && s.sr < 0.35, `stick=${s.sr} roll=${s.roll}°`);
   check('keyboard tap: small bank angle', Math.abs(s.roll) < 8, `roll=${s.roll}°`);
-  await page.waitForTimeout(1400);
+  await page.waitForTimeout(3200);
   s = await snap(page);
   check('keyboard hold: reaches full deflection', s.sr > 0.75, `stick=${s.sr}`);
 
@@ -111,7 +111,7 @@ const snap = (page) => page.evaluate(() => {
   await page.keyboard.press('q');            // arm
   await page.waitForTimeout(150);
   await page.keyboard.down('w');
-  await page.waitForTimeout(1800);           // spool up
+  await page.waitForTimeout(2600);           // spool up
   await page.keyboard.up('w');
   s = await snap(page);
   check('spooled up before disarm', s.thr > 0.5, `thr=${s.thr}`);

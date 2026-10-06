@@ -64,13 +64,14 @@ Details that matter:
 Keyboard keys ramp the simulated sticks instead of slamming to full deflection:
 a tap is a small nudge, a hold builds smoothly, and the throttle behaves as a
 ratchet (hold `W` to spool up, `S` to spool down). Defaults are deliberately
-gentle — the sticks take ~1.5s to reach full throw and the throttle ~2.2s to
-travel idle-to-full. Releasing a key springs the stick home faster than it wound
-up (~0.6s), so letting go actually stops the rotation rather than coasting while
-the stick crawls back. Expo and the deadzone are gimbal-centre aids and are
-skipped on the keyboard path, where they only made the first ~100ms of a press
-feel dead before the stick lurched. Tune the ramp with **Esc → Flight → Keyboard
-response** (lower is gentler; it has no effect while a radio is being used).
+gentle — the sticks take ~2.9s to reach full throw and the throttle ~3.6s to
+travel idle-to-full, so a press is a small nudge on every axis. Releasing a key
+springs the stick home faster than it wound up (~0.6s), so letting go actually
+stops the rotation rather than coasting while the stick crawls back. Expo and the
+deadzone are gimbal-centre aids and are skipped on the keyboard path, where they
+only made the first ~100ms of a press feel dead before the stick lurched. Tune
+the ramp with **Esc → Flight → Keyboard response** (lower is gentler, up to 3×
+for a snappier feel; it has no effect while a radio is being used).
 
 ### Arming
 
