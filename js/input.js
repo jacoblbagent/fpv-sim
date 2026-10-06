@@ -22,8 +22,8 @@ const CONTROL_KEYS = new Set([
 // instead of slamming to full deflection on every press. Kept slow on purpose —
 // a press should be a small nudge on every axis, and a deliberate hold is what
 // takes you to a full throw.
-const KEY_THR_RATE = 0.28;     // idle -> full throttle in ~3.6s
-const KEY_STICK_RATE = 0.35;   // centre -> full deflection in ~2.9s
+const KEY_THR_RATE = 0.15;     // idle -> full throttle in ~6.7s
+const KEY_STICK_RATE = 0.18;   // centre -> full deflection in ~5.6s
 // Releasing a key springs the stick back to centre faster than it winds up, so
 // letting go actually *stops* the rotation instead of coasting on while the
 // stick crawls home (a real gimbal is sprung the same way).

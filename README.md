@@ -64,7 +64,7 @@ Details that matter:
 Keyboard keys ramp the simulated sticks instead of slamming to full deflection:
 a tap is a small nudge, a hold builds smoothly, and the throttle behaves as a
 ratchet (hold `W` to spool up, `S` to spool down). Defaults are deliberately
-gentle — the sticks take ~2.9s to reach full throw and the throttle ~3.6s to
+gentle — the sticks take ~5.6s to reach full throw and the throttle ~6.7s to
 travel idle-to-full, so a press is a small nudge on every axis. Releasing a key
 springs the stick home faster than it wound up (~0.6s), so letting go actually
 stops the rotation rather than coasting while the stick crawls back. Expo and the

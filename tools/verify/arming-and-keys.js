@@ -64,12 +64,15 @@ const snap = (page) => page.evaluate(() => {
   await page.waitForTimeout(1000);
   const t2 = await snap(page);
   const rate = t2.thr - t1.thr;
-  check('throttle ramps gently (~0.28/s, not instant)', rate > 0.15 && rate < 0.55, `+${rate.toFixed(2)} throttle per second`);
+  check('throttle ramps gently (~0.15/s, not instant)', rate > 0.08 && rate < 0.30, `+${rate.toFixed(2)} throttle per second`);
   const climbFrom = t2.alt;
   await page.waitForTimeout(1500);
   s = await snap(page);
-  check('sustained W does eventually spool up', s.thr > 0.6, `thr=${s.thr}`);
   check('throttle burst gives a modest climb (not a launch)', (s.alt - climbFrom) < 14, `climb ${(s.alt - climbFrom).toFixed(1)} m in 1.5s`);
+  // the keyboard throttle is slow on purpose, so give it real time to spool up
+  await page.waitForTimeout(4000);
+  s = await snap(page);
+  check('sustained W does eventually spool up', s.thr > 0.6, `thr=${s.thr}`);
   await page.keyboard.up('w');
 
   // 4. keyboard stick: a tap is a small adjustment
@@ -77,9 +80,9 @@ const snap = (page) => page.evaluate(() => {
   await page.keyboard.down('ArrowRight');
   await page.waitForTimeout(150);
   s = await snap(page);
-  check('keyboard tap: stick barely moves (150ms)', s.sr > 0.03 && s.sr < 0.35, `stick=${s.sr} roll=${s.roll}°`);
+  check('keyboard tap: stick barely moves (150ms)', s.sr > 0.01 && s.sr < 0.35, `stick=${s.sr} roll=${s.roll}°`);
   check('keyboard tap: small bank angle', Math.abs(s.roll) < 8, `roll=${s.roll}°`);
-  await page.waitForTimeout(3200);
+  await page.waitForTimeout(5200);
   s = await snap(page);
   check('keyboard hold: reaches full deflection', s.sr > 0.75, `stick=${s.sr}`);
 
@@ -111,7 +114,7 @@ const snap = (page) => page.evaluate(() => {
   await page.keyboard.press('q');            // arm
   await page.waitForTimeout(150);
   await page.keyboard.down('w');
-  await page.waitForTimeout(2600);           // spool up
+  await page.waitForTimeout(4500);           // spool up (keyboard throttle is slow)
   await page.keyboard.up('w');
   s = await snap(page);
   check('spooled up before disarm', s.thr > 0.5, `thr=${s.thr}`);
