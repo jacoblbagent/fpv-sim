@@ -244,10 +244,18 @@ fly it.
 
 ```bash
 # with the static server already running on :8099
-NODE_PATH=/path/to/node_modules node tools/verify/regression.js   # 25 checks
-NODE_PATH=/path/to/node_modules node tools/verify/arming-and-keys.js  # 22 checks
+NODE_PATH=/path/to/node_modules node tools/verify/regression.js   # 26 checks
+NODE_PATH=/path/to/node_modules node tools/verify/arming-and-keys.js  # 23 checks
 NODE_PATH=/path/to/node_modules node tools/verify/input-signs.js  # stick directions
 NODE_PATH=/path/to/node_modules node tools/verify/controller.js   # radio path
+```
+
+Two of the files are measurement probes rather than pass/fail suites — they print
+numbers, which is how the flight model is tuned against the real aircraft:
+
+```bash
+node tools/verify/flight-model-probe.js   # terminal velocity, hover throttle, top speed
+node tools/verify/key-smoothness-probe.js # rotation per keyboard tap
 ```
 
 `playwright-core` is not a project dependency (the app itself has none) — point
