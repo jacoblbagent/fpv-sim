@@ -64,15 +64,40 @@ const BASE = process.env.BASE_URL || 'http://localhost:8099';
     yaw: +window.__fpv.input.sticks.yaw.toFixed(2),
   })), 'expect roll .6 pitch -.5 thr 1 yaw -.5');
 
-  // arm via pad button 0
+  // arm via pad button 0 — throttle must be at idle first (pre-arm check)
+  await page.evaluate(() => { window.__pad.axes[2] = -1; });
+  await page.waitForTimeout(300);
   await page.evaluate(() => { window.__pad.buttons[0] = { pressed: true, value: 1 }; });
   await page.waitForTimeout(250);
   const armedViaPad = await page.evaluate(() => ({ armed: window.__fpv.flight.armed, osd: document.getElementById('osd-arm').textContent }));
-  console.log('pad arm button ', JSON.stringify(armedViaPad));
+  console.log('pad arm button ', JSON.stringify(armedViaPad), '(expect armed true)');
   await page.evaluate(() => { window.__pad.buttons[0] = { pressed: false, value: 0 }; });
   await page.waitForTimeout(400);
 
-  // take off on the radio and fly for a bit
+  // and it must be refused if the throttle is up
+  await page.evaluate(() => { window.__pad.buttons[0] = { pressed: true, value: 1 }; });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => { window.__pad.buttons[0] = { pressed: false, value: 0 }; });   // disarm
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.__pad.axes[2] = 0.8; window.__pad.buttons[0] = { pressed: true, value: 1 }; });
+  await page.waitForTimeout(300);
+  const refused = await page.evaluate(() => ({
+    armed: window.__fpv.flight.armed,
+    msg: document.getElementById('osd-msg').classList.contains('hidden') ? '' : document.getElementById('osd-msg').textContent,
+  }));
+  console.log('arm w/ thr up  ', JSON.stringify(refused), '(expect armed false + warning)');
+  await page.evaluate(() => { window.__pad.buttons[0] = { pressed: false, value: 0 }; });
+  await page.waitForTimeout(300);
+
+  // take off on the radio and fly for a bit (arm first, throttle at idle).
+  // Angle mode so a held stick produces a stable climb instead of acro tumbling.
+  await page.evaluate(() => window.__fpv.S.set('flightMode', 'angle'));
+  await page.evaluate(() => { window.__pad.axes[2] = -1; window.__pad.axes[1] = 0; });
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.__pad.buttons[0] = { pressed: true, value: 1 }; });
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { window.__pad.buttons[0] = { pressed: false, value: 0 }; });
+  console.log('re-armed for flight', await page.evaluate(() => window.__fpv.flight.armed));
   await page.evaluate(() => { window.__pad.axes[2] = 0.75; window.__pad.axes[1] = 0.25; });
   await page.waitForTimeout(2500);
   const flying = await page.evaluate(() => ({

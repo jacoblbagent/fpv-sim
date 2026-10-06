@@ -3,6 +3,14 @@
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const lerp = (a, b, t) => a + (b - a) * t;
 
+/** Move `current` toward `target` by at most `maxDelta` (rate limiter). */
+export function approach(current, target, maxDelta) {
+  const d = target - current;
+  if (d > maxDelta) return current + maxDelta;
+  if (d < -maxDelta) return current - maxDelta;
+  return target;
+}
+
 /** Frame-rate independent smoothing factor. */
 export const damp = (rate, dt) => 1 - Math.exp(-rate * dt);
 

@@ -55,21 +55,44 @@ Details that matter:
 | Respawn | `R` | — |
 | Cycle view (FPV / chase / LOS) | `C` | — |
 
-Keyboard throttle is integrated (hold `W` to spool up, `S` to spool down) so it
-behaves like a ratchet throttle rather than snapping to full.
+Keyboard keys ramp the simulated sticks instead of slamming to full deflection:
+a tap is a small nudge, a hold builds smoothly, and the throttle behaves as a
+ratchet (hold `W` to spool up, `S` to spool down). Defaults are deliberately
+gentle — the sticks take ~0.8s to reach full throw and the throttle ~2.2s to
+travel idle-to-full. Tune both with **Esc → Flight → Keyboard response** (lower
+is gentler; it has no effect while a radio is being used).
+
+### Arming
+
+Arming never moves the quad:
+
+- **While disarmed there is no motor authority at all** — the sticks are inert, so
+  nothing twitches or creeps when you flip the switch, and the throttle bar
+  stays at zero.
+- **Arming resets the keyboard throttle to idle**, so a throttle wound up before
+  arming cannot launch the quad the instant it arms. Thrust only ever comes from
+  spooling up deliberately *after* arming.
+- **With a radio, arming is inhibited while the throttle stick is above idle**
+  (a real FC pre-arm check) and the OSD flashes `THROTTLE HIGH — LOWER THE STICK
+  TO ARM`. If you see that with the stick physically down, your throttle channel
+  is mis-assigned or inverted — fix it in **Esc → Controller**.
 
 ### First flight
 
 1. Load the page — the start card appears over the world; the sim is live but frozen.
 2. **FLY** starts the sim (and unlocks audio — browsers won't play the motor whine
    before a user gesture).
-3. **Arm** (`Q`, or your pad button). You spawn disarmed on the launch pad; props
-   only spin once armed. The front LED blinks while disarmed and goes solid when armed.
+3. **Arm** (`Q`, or your pad button). You spawn disarmed on the launch pad with the
+   throttle at idle; props only spin once armed. The front LED blinks while
+   disarmed and goes solid when armed.
 4. Hold **`W`** to spool up past hover (about 45% throttle) and climb.
 5. Push the pitch stick forward (`↑`) to fly forward; `C` switches to the chase or
    line-of-sight view if you want to watch the airframe.
 6. Arm/disarm toggles at any time. **`R`** respawns you on the pad; a hard impact
    (above ~5.2 m/s) destroys the props and shows the crash card, which respawns you.
+
+Disarming in mid-air drops the quad — with no motor authority it falls ballistically
+and a hard landing still breaks the props.
 
 ### Using a real controller
 
@@ -147,7 +170,9 @@ yaw `+1` = yaw right. Acro integrates rates directly; Angle mode runs a PD
 attitude hold with a 35° tilt limit.
 
 Impact above ~5.2 m/s bends props and ends the flight. Battery sag reduces
-available thrust as the pack drains.
+available thrust as the pack drains. A disarmed quad has zero motor authority, so
+its sticks are inert — and arming is gated on the throttle being at idle, which is
+why flipping the arm switch can never move the airframe.
 
 ## Verification
 
@@ -158,6 +183,7 @@ fly it.
 ```bash
 # with the static server already running on :8099
 NODE_PATH=/path/to/node_modules node tools/verify/regression.js   # 25 checks
+NODE_PATH=/path/to/node_modules node tools/verify/arming-and-keys.js  # 22 checks
 NODE_PATH=/path/to/node_modules node tools/verify/input-signs.js  # stick directions
 NODE_PATH=/path/to/node_modules node tools/verify/controller.js   # radio path
 ```
@@ -177,6 +203,10 @@ What `regression.js` covers: boot with a clean console, arming, climb and forwar
 flight, gate-pass detection, hard-impact crash → crash card → respawn, switching
 worlds (including out of a crashed state, checking no environment meshes leak),
 all three camera views, a custom arm key taking effect, settings persisting across
-a reload, and restore-defaults. `input-signs.js` asserts the six stick directions
-match real FPV behaviour. `controller.js` fakes a gamepad to verify axis mapping,
-expo, the pad arm button, the learn-button flow, and keyboard fallback on unplug.
+a reload, and restore-defaults. `arming-and-keys.js` asserts that arming never
+moves the quad (throttle reset, inert sticks while disarmed, no drift on re-arm),
+that a key tap is a small adjustment and a hold ramps to full throw, and the radio
+pre-arm throttle refusal. `input-signs.js` asserts the six stick directions match
+real FPV behaviour. `controller.js` fakes a gamepad to verify axis mapping, expo,
+the pad arm button, the pre-arm refusal, the learn-button flow, and keyboard
+fallback on unplug.

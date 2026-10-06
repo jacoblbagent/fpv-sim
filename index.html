@@ -60,6 +60,9 @@
     <div class="thr-label">THR</div>
   </div>
 
+  <!-- Transient warnings (e.g. pre-arm throttle check) -->
+  <div class="osd-msg hidden" id="osd-msg"></div>
+
   <!-- Course / gates -->
   <div class="course" id="course">
     <div class="course-line"><span id="course-name">COURSE</span></div>
@@ -147,6 +150,7 @@
         </div>
       </div>
       <div class="row"><label>Arm button (gamepad index)</label><div class="inl"><input type="number" id="arm-btn-idx" min="0" max="31" step="1" /><span class="tiny">0–31, or use Learn</span></div></div>
+      <p class="tiny dim">Arming is inhibited while the throttle stick is above idle, so a raised stick can't launch the quad. Keyboard throttle resets to zero on every arm/disarm.</p>
     </div>
 
     <div class="panel hidden" id="tab-flt">
@@ -154,7 +158,9 @@
       <div class="row"><label>Roll / pitch rate <b class="val" id="v-rate">720°/s</b></label><input type="range" id="s-rate" min="180" max="1400" step="20" /></div>
       <div class="row"><label>Yaw rate <b class="val" id="v-yaw">360°/s</b></label><input type="range" id="s-yaw" min="100" max="900" step="20" /></div>
       <div class="row"><label>Stick expo <b class="val" id="v-expo">0.30</b></label><input type="range" id="s-expo" min="0" max="0.9" step="0.05" /></div>
-      <div class="row"><label>Camera tilt <b class="val" id="v-tilt">30°</b></label><input type="range" id="s-tilt" min="0" max="60" step="1" /></div>
+      <div class="row"><label>Keyboard response <b class="val" id="v-keysens">1.0&times;</b></label><input type="range" id="s-keysens" min="0.3" max="3" step="0.1" /></div>
+      <p class="tiny dim">Keyboard response scales how fast a held key ramps the stick and the throttle — lower is gentler. Ignored when a radio is connected.</p>
+      <div class="row"><label>Camera tilt <b class="val" id="v-tilt">22°</b></label><input type="range" id="s-tilt" min="0" max="60" step="1" /></div>
       <div class="row"><label>Thrust-to-weight <b class="val" id="v-twr">2.2</b></label><input type="range" id="s-twr" min="1.2" max="4" step="0.1" /></div>
       <div class="row"><label>Propwash / wind <b class="val" id="v-wind">0.0</b></label><input type="range" id="s-wind" min="0" max="1" step="0.1" /></div>
       <div class="row"><label>View</label><div class="inl"><select id="view-mode"><option value="fpv">FPV (onboard)</option><option value="chase">Chase cam</option><option value="los">Line of sight</option></select></div></div>

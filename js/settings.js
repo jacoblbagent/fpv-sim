@@ -16,6 +16,7 @@ export const DEFAULTS = {
   rate: 720,               // deg/s roll+pitch
   yawRate: 360,            // deg/s
   expo: 0.30,
+  keySens: 1.0,            // keyboard stick/throttle travel multiplier
   camTilt: 22,             // degrees
   twr: 2.2,                // thrust-to-weight ratio
   wind: 0.0,               // 0..1 turbulence amount

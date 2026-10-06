@@ -103,6 +103,7 @@ export function initSettingsUI({ input, hooks }) {
   bindRange('s-rate', 'rate', (v) => v + '°/s');
   bindRange('s-yaw', 'yawRate', (v) => v + '°/s');
   bindRange('s-expo', 'expo', (v) => v.toFixed(2));
+  bindRange('s-keysens', 'keySens', (v) => v.toFixed(1) + '×');
   bindRange('s-tilt', 'camTilt', (v) => v + '°');
   bindRange('s-twr', 'twr', (v) => v.toFixed(1));
   bindRange('s-wind', 'wind', (v) => v.toFixed(1));
@@ -158,6 +159,8 @@ export function initSettingsUI({ input, hooks }) {
     el('v-yaw').textContent = S.get('yawRate') + '°/s';
     el('s-expo').value = String(S.get('expo'));
     el('v-expo').textContent = S.get('expo').toFixed(2);
+    el('s-keysens').value = String(S.get('keySens'));
+    el('v-keysens').textContent = S.get('keySens').toFixed(1) + '×';
     el('s-tilt').value = String(S.get('camTilt'));
     el('v-tilt').textContent = S.get('camTilt') + '°';
     el('s-twr').value = String(S.get('twr'));

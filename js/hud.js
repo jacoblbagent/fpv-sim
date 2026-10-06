@@ -13,6 +13,8 @@ export class Hud {
     this.thrFill = el('thr-fill');
     this.dotLeft = el('dot-left');
     this.dotRight = el('dot-right');
+    this.msg = el('osd-msg');
+    this._msgUntil = 0;
 
     this.arm = el('osd-arm');
     this.env = el('osd-env');
@@ -39,7 +41,18 @@ export class Hud {
     if (crosshair !== undefined) this.crosshair.classList.toggle('hidden', !crosshair);
   }
 
+  /** Show a transient warning banner (auto-hides). */
+  flash(text, seconds = 2.5) {
+    this.msg.textContent = text;
+    this.msg.classList.remove('hidden');
+    this._msgUntil = performance.now() + seconds * 1000;
+  }
+
   update(f) {
+    if (this._msgUntil && performance.now() > this._msgUntil) {
+      this._msgUntil = 0;
+      this.msg.classList.add('hidden');
+    }
     const set = (node, key, value) => {
       if (this._last[key] === value) return;
       this._last[key] = value;

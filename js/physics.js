@@ -32,6 +32,10 @@ const LEVEL_KP = 3.2;           // angle-mode attitude gain (1/s per rad)
 const LEVEL_KD = 0.85;          // rate damping so it settles without overshoot
 const MAX_TILT_DEG = 35;
 
+// A disarmed quad has no motor authority at all: sticks are inert until armed,
+// so the airframe cannot twitch or creep the moment you arm/disarm.
+const ZERO_STICKS = Object.freeze({ thr: 0, yaw: 0, pitch: 0, roll: 0 });
+
 export class FlightModel {
   constructor() {
     this.position = new THREE.Vector3();
@@ -112,13 +116,14 @@ export class FlightModel {
     }
 
     const dtc = Math.min(dt, 0.033);
+    const cmd = this.armed ? sticks : ZERO_STICKS;
     const maxRate = THREE.MathUtils.degToRad(cfg.rate);
     const maxYawRate = THREE.MathUtils.degToRad(cfg.yawRate);
 
     // ---- commanded body rates ---------------------------------------------
-    let tp = -sticks.pitch * maxRate;   // stick up (negative) -> nose down
-    let tq = sticks.roll * maxRate;     // stick right -> roll right
-    let tr = -sticks.yaw * maxYawRate;  // stick right -> yaw right
+    let tp = -cmd.pitch * maxRate;   // stick up (negative) -> nose down
+    let tq = cmd.roll * maxRate;     // stick right -> roll right
+    let tr = -cmd.yaw * maxYawRate;  // stick right -> yaw right
 
     if (cfg.flightMode === 'angle') {
       // Attitude hold: sticks command a tilt angle, a PD law turns that into
@@ -126,18 +131,18 @@ export class FlightModel {
       // and right-bank positive), while d(pitch)/dt = -angVel.x and
       // d(roll)/dt = +angVel.z.
       const maxTilt = THREE.MathUtils.degToRad(MAX_TILT_DEG);
-      const targetPitch = sticks.pitch * maxTilt;    // stick up -> nose down
-      const targetRoll = sticks.roll * maxTilt;      // stick right -> bank right
+      const targetPitch = cmd.pitch * maxTilt;    // stick up -> nose down
+      const targetRoll = cmd.roll * maxTilt;      // stick right -> bank right
       const errPitch = targetPitch - THREE.MathUtils.degToRad(this.pitchDeg);
       const errRoll = targetRoll - THREE.MathUtils.degToRad(this.rollDeg);
       tp = clamp(-LEVEL_KP * errPitch - LEVEL_KD * this.angVel.x, -maxRate, maxRate);
       tq = clamp(LEVEL_KP * errRoll - LEVEL_KD * this.angVel.z, -maxRate, maxRate);
-      tr = -sticks.yaw * maxYawRate * 0.85;
+      tr = -cmd.yaw * maxYawRate * 0.85;
     }
 
     // ---- angular dynamics --------------------------------------------------
     const f = damp(ANG_RESPONSE, dtc);
-    const hasInput = Math.abs(sticks.pitch) > 0.01 || Math.abs(sticks.roll) > 0.01 || Math.abs(sticks.yaw) > 0.01;
+    const hasInput = Math.abs(cmd.pitch) > 0.01 || Math.abs(cmd.roll) > 0.01 || Math.abs(cmd.yaw) > 0.01;
     this.angVel.x += (tp - this.angVel.x) * f;
     this.angVel.y += (tr - this.angVel.y) * f;
     this.angVel.z += (tq - this.angVel.z) * f;
@@ -157,7 +162,7 @@ export class FlightModel {
     // ---- thrust + gravity --------------------------------------------------
     this._up.set(0, 1, 0).applyQuaternion(this.quaternion);
     const twr = clamp(cfg.twr + this.batteryDip() * 0.25, 1, 4.5);
-    const throttle = this.armed ? clamp(sticks.thr, 0, 1) : 0;
+    const throttle = this.armed ? clamp(cmd.thr, 0, 1) : 0;
     this.motorLoad = throttle;
     const thrustAccel = throttle * twr * G;
     const accel = this._tmp.set(0, -G, 0).addScaledVector(this._up, thrustAccel);

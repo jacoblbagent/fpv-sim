@@ -8,7 +8,7 @@
 //   Up/Down -> pitch        Left/Right -> roll
 // Arm is a configurable key (default Q) and/or a configurable pad button.
 
-import { clamp, shapeAxis, damp } from './utils.js';
+import { clamp, shapeAxis, approach } from './utils.js';
 import * as S from './settings.js';
 
 const CONTROL_KEYS = new Set([
@@ -16,7 +16,12 @@ const CONTROL_KEYS = new Set([
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
 ]);
 
-const KEY_THR_RATE = 1.6;   // keyboard throttle travel per second
+// Keyboard travel rates, in full-stick-travel per second (scaled by the
+// "keyboard response" setting). Deliberately unhurried: a digital key is
+// all-or-nothing, so ramping the simulated stick gives the pilot fine control
+// instead of slamming to full deflection on every press.
+const KEY_THR_RATE = 0.45;     // idle -> full throttle in ~2.2s
+const KEY_STICK_RATE = 1.2;    // centre -> full deflection in ~0.83s
 
 export class InputManager {
   constructor() {
@@ -35,6 +40,7 @@ export class InputManager {
     this._learning = null;
 
     this.keyThrottle = 0;
+    this.armed = false;           // keyboard throttle only responds once armed
     this.sticks = { thr: 0, yaw: 0, pitch: 0, roll: 0 };
 
     this._onKeyDown = this._onKeyDown.bind(this);
@@ -77,6 +83,21 @@ export class InputManager {
     if (!this._armPending) return false;
     this._armPending = false;
     return true;
+  }
+
+  /**
+   * Arm/disarm bookkeeping: the keyboard throttle is zeroed on every change so
+   * flipping the arm switch can never launch the quad — thrust only ever comes
+   * from the pilot deliberately spooling up *after* arming.
+   */
+  setArmed(armed) {
+    this.armed = !!armed;
+    this.keyThrottle = 0;
+    if (!this.armed) {
+      this.sticks.thr = 0;
+      this.sticks.yaw = this.sticks.pitch = this.sticks.roll = 0;
+    }
+    return this.armed;
   }
 
   /** Resolve with the index of the next gamepad button pressed (for "Learn"). */
@@ -149,20 +170,27 @@ export class InputManager {
       this.keyThrottle = this.sticks.thr;   // keep keyboard in sync
     } else {
       const k = this.keys;
-      if (k['KeyW']) this.keyThrottle += KEY_THR_RATE * dt;
-      if (k['KeyS']) this.keyThrottle -= KEY_THR_RATE * dt;
+      const sens = clamp(S.get('keySens') || 1, 0.2, 4);
+
+      // Throttle only responds once armed, so a wound-up stick can never
+      // launch the quad the instant it arms.
+      if (this.armed) {
+        if (k['KeyW']) this.keyThrottle += KEY_THR_RATE * sens * dt;
+        if (k['KeyS']) this.keyThrottle -= KEY_THR_RATE * sens * dt;
+      }
       this.keyThrottle = clamp(this.keyThrottle, 0, 1);
 
       const yaw = (k['KeyA'] ? -1 : 0) + (k['KeyD'] ? 1 : 0);
       const pitch = (k['ArrowUp'] ? -1 : 0) + (k['ArrowDown'] ? 1 : 0);
       const roll = (k['ArrowLeft'] ? -1 : 0) + (k['ArrowRight'] ? 1 : 0);
 
-      // Keyboard sticks are digital; smooth them so the quad flies like a radio
-      // instead of snapping between centre and full deflection.
-      const f = damp(26, dt);
-      this.sticks.yaw += (shapeAxis(yaw, 0, expoAmt) - this.sticks.yaw) * f;
-      this.sticks.pitch += (shapeAxis(pitch, 0, expoAmt) - this.sticks.pitch) * f;
-      this.sticks.roll += (shapeAxis(roll, 0, expoAmt) - this.sticks.roll) * f;
+      // Digital keys ramp the simulated stick at a fixed rate rather than
+      // snapping to full deflection, so a tap is a small nudge and a hold is a
+      // smooth build-up — closer to a real gimbal.
+      const step = KEY_STICK_RATE * sens * dt;
+      this.sticks.yaw = approach(this.sticks.yaw, shapeAxis(yaw, 0, expoAmt), step);
+      this.sticks.pitch = approach(this.sticks.pitch, shapeAxis(pitch, 0, expoAmt), step);
+      this.sticks.roll = approach(this.sticks.roll, shapeAxis(roll, 0, expoAmt), step);
       this.sticks.thr = this.keyThrottle;
     }
 

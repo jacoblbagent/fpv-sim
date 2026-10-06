@@ -66,6 +66,9 @@ let bestLap = Infinity;
 let gatesPassed = 0;
 let crashTimer = 0;
 
+// Arming is inhibited unless the throttle is at idle (a real FC pre-arm check).
+const PREARM_THR = 0.06;
+
 // ---------------------------------------------------------------- audio
 const audio = {
   ctx: null, master: null, oscs: [], noiseGain: null,
@@ -127,6 +130,7 @@ function loadEnvironment(id) {
   paused = false;
   crashTimer = 0;
   flight.reset(env);
+  input.setArmed(false);
   resetCourse();
   applyEnvironmentLook();
   drone.group.position.copy(flight.position);
@@ -286,6 +290,7 @@ function showCrash() {
 function respawn() {
   crashScreen.classList.add('hidden');
   flight.reset(env);
+  input.setArmed(false);
   resetCourse();
   crashTimer = 0;
   paused = false;
@@ -370,8 +375,17 @@ function frame() {
 
   if (!paused && flying) {
     if (armEdge && !flight.crashed) {
-      flight.armed = !flight.armed;
-      if (flight.armed && lapStart === 0) lapStart = performance.now();
+      if (flight.armed) {
+        flight.armed = false;
+        input.setArmed(false);
+      } else if (input.source === 'radio' && sticks.thr > PREARM_THR) {
+        // Don't let a raised throttle stick launch the quad on arm.
+        hud.flash('THROTTLE HIGH — LOWER THE STICK TO ARM');
+      } else {
+        flight.armed = true;
+        input.setArmed(true);          // also zeroes the keyboard throttle
+        if (lapStart === 0) lapStart = performance.now();
+      }
     }
     if (flight.armed) elapsed += dt;
 

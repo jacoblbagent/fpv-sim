@@ -82,6 +82,14 @@ html, body {
 .hint { position: absolute; left: 50%; transform: translateX(-50%); top: 13px; font-size: 10px; letter-spacing: .08em; color: rgba(234,246,255,.7); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
 .hint.hidden { display: none; }
 
+.osd-msg {
+  position: absolute; left: 50%; top: 60%; transform: translateX(-50%);
+  padding: 8px 14px; border-radius: 4px; font-size: 12px; letter-spacing: .1em;
+  font-weight: 700; color: #2a0d06; background: rgba(255,107,74,.92);
+  box-shadow: 0 4px 14px rgba(0,0,0,.35); white-space: nowrap;
+}
+.osd-msg.hidden { display: none; }
+
 /* ---------- Screens ---------- */
 .screen {
   position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;

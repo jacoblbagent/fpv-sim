@@ -19,12 +19,20 @@ const BASE = process.env.BASE_URL || 'http://localhost:8099';
   const pulse = async (label, key, expect) => {
     await page.evaluate(() => {
       const f = window.__fpv.flight;
+      const i = window.__fpv.input;
       f.quaternion.identity(); f.angVel.set(0, 0, 0); f.velocity.set(0, 0, 0);
-      f.position.set(0, 60, 0); f.armed = true; f.crashed = false;
-      window.__fpv.input.keyThrottle = 0;
+      f.position.set(0, 60, 0); f.crashed = false;
+      i.keyThrottle = 0;
+      // clear any residual stick ramp from the previous pulse, and arm both the
+      // model and the input layer (sticks are inert while disarmed)
+      i.sticks.thr = i.sticks.yaw = i.sticks.pitch = i.sticks.roll = 0;
+      i.armed = true;
+      f.armed = true;
     });
     await page.keyboard.down(key);
-    await page.waitForTimeout(140);
+    // keyboard sticks ramp at ~1.2 stick-travel/s, so hold long enough for the
+    // simulated gimbal to reach a clear deflection before sampling body rates
+    await page.waitForTimeout(700);
     const r = await page.evaluate(() => {
       const f = window.__fpv.flight;
       const V = window.__fpv.camera.position.constructor;
