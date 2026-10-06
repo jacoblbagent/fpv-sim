@@ -180,6 +180,30 @@ available thrust as the pack drains. A disarmed quad has zero motor authority, s
 its sticks are inert — and arming is gated on the throttle being at idle, which is
 why flipping the arm switch can never move the airframe.
 
+## Deploying
+
+GitHub Pages serves this repo's `main` branch root directly — **there is no build
+step, so deploying is just a commit and a push**:
+
+```bash
+git add -A && git commit -m "..." && git push origin main
+```
+
+Pages rebuilds in ~30-60s. Live: https://jacoblbagent.github.io/fpv-sim/
+
+Because it's a project page it lives under `/fpv-sim/`, but every asset path in the
+app is **relative** (`./js/…`, `./vendor/three.module.js`, including the import
+map), so it resolves correctly under the subpath with no `base` config. `.nojekyll`
+is committed so Jekyll doesn't touch the output. Local and deployed run the exact
+same files.
+
+Verify a deploy by pointing the test suite at the live URL:
+
+```bash
+BASE_URL=https://jacoblbagent.github.io/fpv-sim \
+  NODE_PATH=/tmp/fpv-verify/node_modules node tools/verify/regression.js
+```
+
 ## Verification
 
 `tools/verify/` holds headless browser checks that drive the real app (Chromium
