@@ -174,6 +174,29 @@ Colliders are `{type:'sphere', pos:Vector3, r}` or
 
 ## Flight model notes
 
+The airframe is a **1S 65 mm brushless whoop** (BetaFPV Air65 II class): ~25 g
+AUW with a 1S 300 mAh pack, about **4:1** static thrust-to-weight on the
+Freestyle build (the Champion is 6.3:1 — wind the slider up to 6.3 to feel it),
+tiny props and almost no rotational inertia. Measured against the model:
+
+| quantity | model | real Air65 II |
+|---|---|---|
+| hover throttle | ~50% stick | ~40–50% |
+| freefall terminal velocity | 7.5 m/s | floats down, single digits |
+| level top speed | ~14.5 m/s (52 km/h) | 15 m/s (54 km/h) |
+| hover endurance | ~3.5 min | ~4 min |
+
+Two things make that feel: **thrust is quadratic in throttle** (thrust goes with
+motor rpm squared and the stick commands rpm), so hover sits near half stick with
+a hard punch above it, and **drag is large for the mass** (`0.5·ρ·CdA/m` for
+CdA ≈ 0.0066 m²), which is what floats the quad down instead of dropping it and
+stops it dead when you chop the throttle.
+
+Drag is taken against **airspeed, not ground speed**, so the wind setting is a
+real breeze in m/s (default 2, a light day; 0 is indoor calm): it carries the quad
+downwind while you lean into it, and gusts shove it around. `Propwash`-style
+turbulence is gone — it's now a physical breeze plus gusts.
+
 Body frame is `+Z` nose, `+Y` up (so the body's right axis is `-X` — this is why
 the roll/yaw signs look "backwards" next to the raw three.js convention). Sticks
 map to body rates: pitch `-1` (stick up) = nose down, roll `+1` = bank right,
@@ -184,6 +207,10 @@ Impact above ~5.2 m/s bends props and ends the flight. Battery sag reduces
 available thrust as the pack drains. A disarmed quad has zero motor authority, so
 its sticks are inert — and arming is gated on the throttle being at idle, which is
 why flipping the arm switch can never move the airframe.
+
+Changing the model's *shape* (as opposed to its numbers) bumps `AIRFRAME_V` in
+`js/settings.js`, which re-seeds the stored thrust-to-weight and wind from the new
+defaults on next load while keeping every other saved preference.
 
 ## Deploying
 

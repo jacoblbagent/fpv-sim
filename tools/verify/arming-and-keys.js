@@ -38,7 +38,12 @@ const snap = (page) => page.evaluate(() => {
   await page.waitForTimeout(3200);
   await page.click('#btn-fly');
   await page.waitForTimeout(300);
-  await page.evaluate(() => window.__fpv.S.set('flightMode', 'angle'));
+  await page.evaluate(() => {
+    window.__fpv.S.set('flightMode', 'angle');
+    // these checks are about arming/throttle/stick behaviour, not weather: a
+    // breeze would drift the quad and read as "the arm switch moved it"
+    window.__fpv.S.set('wind', 0);
+  });
 
   // 1. disarmed: throttle must not respond to W
   await page.keyboard.down('w');

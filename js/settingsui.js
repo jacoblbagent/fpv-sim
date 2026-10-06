@@ -105,8 +105,8 @@ export function initSettingsUI({ input, hooks }) {
   bindRange('s-expo', 'expo', (v) => v.toFixed(2));
   bindRange('s-keysens', 'keySens', (v) => v.toFixed(1) + '×');
   bindRange('s-tilt', 'camTilt', (v) => v + '°');
-  bindRange('s-twr', 'twr', (v) => v.toFixed(1));
-  bindRange('s-wind', 'wind', (v) => v.toFixed(1));
+  bindRange('s-twr', 'twr', (v) => v.toFixed(1) + ':1');
+  bindRange('s-wind', 'wind', (v) => v.toFixed(1) + ' m/s');
 
   // ---- selects / checkboxes ----------------------------------------------
   const bindSelect = (id, key) => {
@@ -164,9 +164,9 @@ export function initSettingsUI({ input, hooks }) {
     el('s-tilt').value = String(S.get('camTilt'));
     el('v-tilt').textContent = S.get('camTilt') + '°';
     el('s-twr').value = String(S.get('twr'));
-    el('v-twr').textContent = S.get('twr').toFixed(1);
+    el('v-twr').textContent = S.get('twr').toFixed(1) + ':1';
     el('s-wind').value = String(S.get('wind'));
-    el('v-wind').textContent = S.get('wind').toFixed(1);
+    el('v-wind').textContent = S.get('wind').toFixed(1) + ' m/s';
     el('flight-mode').value = S.get('flightMode');
     el('view-mode').value = S.get('viewMode');
     el('sound').checked = !!S.get('sound');

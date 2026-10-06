@@ -29,7 +29,10 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
 
   await page.click('#btn-fly');
   await page.waitForTimeout(300);
-  await page.evaluate(() => window.__fpv.S.set('flightMode', 'angle'));
+  await page.evaluate(() => {
+    window.__fpv.S.set('flightMode', 'angle');
+    window.__fpv.S.set('wind', 0);   // fly the mechanics in still air; wind is tested on its own below
+  });
 
   // --- arm with the configured key
   await page.keyboard.press('q');
@@ -63,9 +66,11 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
   await page.evaluate(() => {
     const f = window.__fpv.flight;
     window.__fpv.input.keyThrottle = 0;
-    f.position.set(0, 40, 0); f.velocity.set(0, -22, 0); f.quaternion.identity();
+    f.position.set(0, 6, 0); f.velocity.set(0, -22, 0); f.quaternion.identity();
   });
-  await page.waitForTimeout(4200);
+  // dropped from just above the deck: a whoop's drag bleeds 22 m/s off fast, but
+  // it still arrives well above the prop-bending impact speed
+  await page.waitForTimeout(3000);
   check('hard impact crashes', await page.evaluate(() => window.__fpv.flight.crashed));
   check('crash screen shows', await page.evaluate(() => !document.getElementById('crashscreen').classList.contains('hidden')));
   await page.click('#btn-respawn');
@@ -77,9 +82,9 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
   await page.evaluate(() => {
     const f = window.__fpv.flight;
     window.__fpv.input.keyThrottle = 0;
-    f.position.set(0, 40, 0); f.velocity.set(0, -22, 0);
+    f.position.set(0, 6, 0); f.velocity.set(0, -22, 0);
   });
-  await page.waitForTimeout(2600);   // crash in meadow
+  await page.waitForTimeout(3000);   // crash in meadow
   await page.evaluate(() => window.__fpv.S.set('env', 'canyon'));
   await page.waitForTimeout(2200);
   const cy = await page.evaluate(() => ({ env: window.__fpv.env.id, paused: window.__fpv.paused, crashed: window.__fpv.flight.crashed, gates: window.__fpv.env.gates.length, z: +window.__fpv.flight.position.z.toFixed(0) }));
@@ -141,7 +146,27 @@ const check = (name, ok, detail) => { results.push({ name, ok, detail }); consol
   await page.click('#btn-defaults');
   await page.waitForTimeout(800);
   const restored = await page.evaluate(() => ({ twr: window.__fpv.S.get('twr'), armKey: window.__fpv.S.get('armKey'), env: window.__fpv.env.id }));
-  check('restore defaults works', restored.twr === 2.2 && restored.armKey === 'KeyQ' && restored.env === 'meadow', JSON.stringify(restored));
+  check('restore defaults works', restored.twr === 4.0 && restored.armKey === 'KeyQ' && restored.env === 'meadow', JSON.stringify(restored));
+
+  // --- wind: a breeze carries a hovering quad downwind ---------------------
+await page.evaluate(() => {
+    const f = window.__fpv.flight, i = window.__fpv.input;
+    window.__fpv.S.set('wind', 8);
+    f.crashed = false; f.armed = true; f.quaternion.identity(); f.angVel.set(0, 0, 0);
+    f.velocity.set(0, 0, 0); f.position.set(0, 80, 0);
+    i.armed = true; i.keyThrottle = 0.5;    // ~hover stick for the whoop curve
+    i.sticks.thr = 0.5; i.sticks.yaw = i.sticks.pitch = i.sticks.roll = 0;
+    window.__windFrom = f.position.clone();
+  });
+  await page.waitForTimeout(3000);
+  const drift = await page.evaluate(() => {
+    const f = window.__fpv.flight;
+    return +f.position.distanceTo(window.__windFrom).toFixed(2);
+  });
+  check('wind carries the quad downwind', drift > 4, `drifted ${drift} m in 3 s of 8 m/s wind`);
+  await page.evaluate(() => { window.__fpv.S.set('wind', 0); window.__fpv.input.keyThrottle = 0; });
+  await page.keyboard.press('r');
+  await page.waitForTimeout(400);
 
   // --- perf snapshot
   const perf = await page.evaluate(() => JSON.stringify({ calls: window.__fpv.renderer.info.render.calls, tris: window.__fpv.renderer.info.render.triangles }));

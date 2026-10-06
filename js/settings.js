@@ -1,6 +1,12 @@
 // Persisted user settings (localStorage) + a tiny change-notification bus.
 
 const KEY = 'fpvsim.settings.v1';
+// Bumped whenever the flight model changes shape (not just its numbers). A
+// stored file from an older model gets its airframe values re-seeded from the
+// new defaults — a thrust-to-weight and a wind figure tuned against the old
+// model are meaningless against the new one — while every other preference
+// (controller mapping, arm key, view, world) is kept.
+const AIRFRAME_V = 2;
 
 export const DEFAULTS = {
   // input
@@ -18,8 +24,11 @@ export const DEFAULTS = {
   expo: 0.30,
   keySens: 1.0,            // keyboard stick/throttle travel multiplier
   camTilt: 22,             // degrees
-  twr: 2.2,                // thrust-to-weight ratio
-  wind: 0.0,               // 0..1 turbulence amount
+  // Airframe: a 1S 65mm brushless whoop (BetaFPV Air65 II class, ~25 g AUW).
+  // Static thrust-to-weight ~4:1 for the Freestyle build (the Champion is
+  // 6.3:1 — wind it up to taste), hover lands at about half stick.
+  twr: 4.0,                // thrust-to-weight ratio at full charge
+  wind: 2.0,               // mean wind in m/s; 0 = indoor calm, 2 = light breeze
   viewMode: 'fpv',         // fpv | chase | los
   sound: true,
 
@@ -29,6 +38,9 @@ export const DEFAULTS = {
   showSticks: true,
   showOsd: true,
   shake: true,
+
+  // which flight-model revision these airframe values were tuned against
+  airframeV: AIRFRAME_V,
 };
 
 let state = load();
@@ -43,6 +55,11 @@ function load() {
     const out = { ...structuredClone(DEFAULTS), ...parsed };
     out.axisMap = { ...DEFAULTS.axisMap, ...(parsed.axisMap || {}) };
     out.invert = { ...DEFAULTS.invert, ...(parsed.invert || {}) };
+    if (out.airframeV !== AIRFRAME_V) {
+      out.twr = DEFAULTS.twr;
+      out.wind = DEFAULTS.wind;
+      out.airframeV = AIRFRAME_V;
+    }
     return out;
   } catch (e) {
     return structuredClone(DEFAULTS);

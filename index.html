@@ -161,8 +161,9 @@
       <div class="row"><label>Keyboard response <b class="val" id="v-keysens">1.0&times;</b></label><input type="range" id="s-keysens" min="0.3" max="3" step="0.1" /></div>
       <p class="tiny dim">Keyboard response scales how fast a held key ramps the stick and the throttle — lower is gentler. Ignored when a radio is connected.</p>
       <div class="row"><label>Camera tilt <b class="val" id="v-tilt">22°</b></label><input type="range" id="s-tilt" min="0" max="60" step="1" /></div>
-      <div class="row"><label>Thrust-to-weight <b class="val" id="v-twr">2.2</b></label><input type="range" id="s-twr" min="1.2" max="4" step="0.1" /></div>
-      <div class="row"><label>Propwash / wind <b class="val" id="v-wind">0.0</b></label><input type="range" id="s-wind" min="0" max="1" step="0.1" /></div>
+      <div class="row"><label>Thrust-to-weight <b class="val" id="v-twr">4.0:1</b></label><input type="range" id="s-twr" min="1.2" max="7" step="0.1" /></div>
+      <div class="row"><label>Wind / gusts <b class="val" id="v-wind">2.0 m/s</b></label><input type="range" id="s-wind" min="0" max="12" step="0.5" /></div>
+      <p class="tiny dim">The airframe is a 1S 65mm whoop (BetaFPV Air65 II class, ~25&nbsp;g AUW): about 4:1 thrust-to-weight, hover near half stick, ~54&nbsp;km/h flat out. Wind is a real breeze in m/s — drag is taken against airspeed, so a steady wind carries you downwind and you lean into it; 0 is indoor calm.</p>
       <div class="row"><label>View</label><div class="inl"><select id="view-mode"><option value="fpv">FPV (onboard)</option><option value="chase">Chase cam</option><option value="los">Line of sight</option></select></div></div>
       <div class="row"><label>Motor audio</label><div class="inl"><input type="checkbox" id="sound" /><span class="tiny">motor whine follows throttle</span></div></div>
     </div>

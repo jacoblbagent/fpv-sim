@@ -20,12 +20,19 @@ import * as THREE from 'three';
 import { clamp, damp } from './utils.js';
 
 const G = 9.81;
-const ANG_RESPONSE = 16;        // how fast the quad reaches the commanded rate
-const ANG_DRAG = 0.55;          // rate decay with centred sticks (prop drag)
-const LINEAR_DRAG = 0.06;       // parasitic drag coefficient (1/s)
-const QUAD_DRAG = 0.011;        // v^2 drag (1/m) — gives ~35 m/s top speed and
-                                // ~27 m/s freefall terminal velocity, i.e. a
-                                // realistic 5" freestyle quad, not a floating camera
+// Modelled on a 1S 65mm brushless whoop (BetaFPV Air65 II class, ~25 g AUW with
+// a 1S 300 mAh pack): tiny props, almost no inertia, and a lot of drag for its
+// mass. That combination is what makes a whoop feel the way it does — it snaps
+// to a commanded rate and stops just as fast, floats down instead of dropping,
+// and gets shoved around by a light breeze.
+const ANG_RESPONSE = 26;        // how fast the quad reaches the commanded rate
+const ANG_DRAG = 1.1;           // rate decay with centred sticks (prop drag)
+const LINEAR_DRAG = 0.083;      // parasitic drag (1/s)
+const QUAD_DRAG = 0.163;        // v^2 drag (1/m). For a 25 g airframe with
+                                // CdA ~ 0.0066 m^2 this is 0.5*rho*CdA/m, which
+                                // gives ~7.5 m/s freefall terminal velocity and
+                                // ~15 m/s (54 km/h) flat-out level speed — the
+                                // Air65 II's published top speed.
 const RESTITUTION = 0.28;
 const CRASH_SPEED = 5.2;        // m/s impact that bends props
 const LEVEL_KP = 3.2;           // angle-mode attitude gain (1/s per rad)
@@ -55,6 +62,8 @@ export class FlightModel {
     this._up = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
     this._tmp = new THREE.Vector3();
+    this._wind = new THREE.Vector3();
+    this._rel = new THREE.Vector3();
     this._levelQ = new THREE.Quaternion();
   }
 
@@ -161,24 +170,37 @@ export class FlightModel {
 
     // ---- thrust + gravity --------------------------------------------------
     this._up.set(0, 1, 0).applyQuaternion(this.quaternion);
-    const twr = clamp(cfg.twr + this.batteryDip() * 0.25, 1, 4.5);
+    const twr = clamp(cfg.twr + this.batteryDip() * 0.25, 1, 8);
     const throttle = this.armed ? clamp(cmd.thr, 0, 1) : 0;
     this.motorLoad = throttle;
-    const thrustAccel = throttle * twr * G;
+    // Thrust rises with the square of motor rpm and the stick commands rpm, so
+    // the curve is quadratic. On a whoop that puts hover at roughly half stick
+    // (1/sqrt(twr)) with a hard punch above it, instead of the quarter stick a
+    // linear curve would give.
+    const thrustAccel = throttle * throttle * twr * G;
     const accel = this._tmp.set(0, -G, 0).addScaledVector(this._up, thrustAccel);
 
-    // ---- drag --------------------------------------------------------------
-    const sp = this.velocity.length();
-    const dragMag = LINEAR_DRAG + QUAD_DRAG * sp;
-    accel.addScaledVector(this.velocity, -dragMag);
-
-    // ---- wind / turbulence -------------------------------------------------
-    if (cfg.wind > 0) {
+    // ---- wind: a steady breeze plus gusts ----------------------------------
+    // Drag is taken against *airspeed*, not ground speed, so a steady wind
+    // carries the quad downwind (the pilot leans into it to hold position) and
+    // gusts shove it around. cfg.wind is the mean wind in m/s; 0 is indoor calm.
+    const ws = cfg.wind;
+    if (ws > 0) {
       const t = performance.now() * 0.001;
-      accel.x += Math.sin(t * 1.7) * cfg.wind * 2.2;
-      accel.z += Math.cos(t * 2.3) * cfg.wind * 2.2;
-      accel.y += Math.sin(t * 3.1) * cfg.wind * 1.1;
+      this._wind.set(
+        ws * (1 + 0.30 * Math.sin(t * 0.31) + 0.15 * Math.sin(t * 2.1)),
+        ws * 0.10 * Math.sin(t * 1.3),
+        ws * (0.25 * Math.sin(t * 0.23) + 0.18 * Math.sin(t * 2.7))
+      );
+    } else {
+      this._wind.set(0, 0, 0);
     }
+
+    // ---- drag --------------------------------------------------------------
+    this._rel.copy(this.velocity).sub(this._wind);
+    const sp = this._rel.length();
+    const dragMag = LINEAR_DRAG + QUAD_DRAG * sp;
+    accel.addScaledVector(this._rel, -dragMag);
 
     this.velocity.addScaledVector(accel, dtc);
 
@@ -193,7 +215,9 @@ export class FlightModel {
     this._resolveGround(env);
 
     // ---- battery -----------------------------------------------------------
-    const drain = 0.0016 + throttle * 0.010 + Math.abs(this.angVel.length()) * 0.0006;
+    // Sized so a hover burns a 1S 300 mAh pack in ~3.5 min and flat-out flight
+    // in under 2, like the real thing.
+    const drain = 0.0016 + throttle * 0.0075 + Math.abs(this.angVel.length()) * 0.0006;
     this.battery = clamp(this.battery - drain * dtc, 0, 1);
   }
 

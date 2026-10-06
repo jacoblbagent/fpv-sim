@@ -1,5 +1,7 @@
-// The quadcopter: a detailed 5-inch freestyle build with spinning props,
-// camera pod, antenna, battery and status LEDs. Cartoon proportions, toon shading.
+// The quadcopter: an open-prop cartoon airframe with spinning props, camera pod,
+// antenna, battery and status LEDs. It's drawn a touch larger than the 1S 65mm
+// whoop the flight model simulates, so it still reads in the chase and LOS views.
+// Toon shading.
 
 import * as THREE from 'three';
 
