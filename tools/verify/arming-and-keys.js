@@ -78,11 +78,21 @@ const snap = (page) => page.evaluate(() => {
   await page.waitForTimeout(150);
   s = await snap(page);
   check('keyboard tap: stick barely moves (150ms)', s.sr > 0.05 && s.sr < 0.35, `stick=${s.sr} roll=${s.roll}°`);
-  check('keyboard tap: small bank angle', Math.abs(s.roll) < 14, `roll=${s.roll}°`);
+  check('keyboard tap: small bank angle', Math.abs(s.roll) < 8, `roll=${s.roll}°`);
   await page.waitForTimeout(1400);
   s = await snap(page);
   check('keyboard hold: reaches full deflection', s.sr > 0.75, `stick=${s.sr}`);
+
+  // releasing a key springs the stick home faster than it winds up, so letting
+  // go stops the rotation instead of coasting on while the stick crawls back
+  const relT0 = Date.now();
   await page.keyboard.up('ArrowRight');
+  let relMs = null;
+  for (let i = 0; i < 40; i++) {
+    if (await page.evaluate(() => Math.abs(window.__fpv.input.sticks.roll)) < 0.05) { relMs = Date.now() - relT0; break; }
+    await page.waitForTimeout(40);
+  }
+  check('keyboard release springs home (<0.8s)', relMs !== null && relMs < 800, `centred in ${relMs} ms`);
   await page.waitForTimeout(2400);
   s = await snap(page);
   check('keyboard release: stick returns to centre + levels out', Math.abs(s.sr) < 0.1 && Math.abs(s.roll) < 5, `stick=${s.sr} roll=${s.roll}°`);

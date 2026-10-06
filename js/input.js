@@ -21,7 +21,11 @@ const CONTROL_KEYS = new Set([
 // all-or-nothing, so ramping the simulated stick gives the pilot fine control
 // instead of slamming to full deflection on every press.
 const KEY_THR_RATE = 0.45;     // idle -> full throttle in ~2.2s
-const KEY_STICK_RATE = 1.2;    // centre -> full deflection in ~0.83s
+const KEY_STICK_RATE = 0.65;   // centre -> full deflection in ~1.5s
+// Releasing a key springs the stick back to centre faster than it winds up, so
+// letting go actually *stops* the rotation instead of coasting on while the
+// stick crawls home (a real gimbal is sprung the same way).
+const KEY_CENTRE_RATE = 1.7;
 
 export class InputManager {
   constructor() {
@@ -184,13 +188,17 @@ export class InputManager {
       const pitch = (k['ArrowUp'] ? -1 : 0) + (k['ArrowDown'] ? 1 : 0);
       const roll = (k['ArrowLeft'] ? -1 : 0) + (k['ArrowRight'] ? 1 : 0);
 
-      // Digital keys ramp the simulated stick at a fixed rate rather than
-      // snapping to full deflection, so a tap is a small nudge and a hold is a
-      // smooth build-up — closer to a real gimbal.
+      // Digital keys command a stick *position*, ramped linearly toward it.
+      // Expo and the deadzone are gimbal-centre aids — applied to an
+      // already-ramped digital key they just make the first ~100 ms feel dead
+      // and then lurch, so the keyboard path bypasses both and uses the raw
+      // ±1 key value as the target.
       const step = KEY_STICK_RATE * sens * dt;
-      this.sticks.yaw = approach(this.sticks.yaw, shapeAxis(yaw, 0, expoAmt), step);
-      this.sticks.pitch = approach(this.sticks.pitch, shapeAxis(pitch, 0, expoAmt), step);
-      this.sticks.roll = approach(this.sticks.roll, shapeAxis(roll, 0, expoAmt), step);
+      const centreStep = KEY_CENTRE_RATE * sens * dt;
+      const ramped = (cur, dir) => approach(cur, dir, dir === 0 ? centreStep : step);
+      this.sticks.yaw = ramped(this.sticks.yaw, yaw);
+      this.sticks.pitch = ramped(this.sticks.pitch, pitch);
+      this.sticks.roll = ramped(this.sticks.roll, roll);
       this.sticks.thr = this.keyThrottle;
     }
 

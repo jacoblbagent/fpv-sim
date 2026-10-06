@@ -30,7 +30,7 @@ const BASE = process.env.BASE_URL || 'http://localhost:8099';
       f.armed = true;
     });
     await page.keyboard.down(key);
-    // keyboard sticks ramp at ~1.2 stick-travel/s, so hold long enough for the
+    // keyboard sticks ramp at ~0.65 stick-travel/s, so hold long enough for the
     // simulated gimbal to reach a clear deflection before sampling body rates
     await page.waitForTimeout(700);
     const r = await page.evaluate(() => {
