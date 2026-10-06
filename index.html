@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>FPV Sim — Browser Drone Simulator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='8' cy='8' r='4' fill='%234ecdc4'/%3E%3Ccircle cx='24' cy='8' r='4' fill='%234ecdc4'/%3E%3Ccircle cx='8' cy='24' r='4' fill='%234ecdc4'/%3E%3Ccircle cx='24' cy='24' r='4' fill='%234ecdc4'/%3E%3Crect x='11' y='13' width='10' height='6' rx='2' fill='%2310161c'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="style.css" />
+<script>
+  // Error overlay: catches module/init crashes that a wiped console would hide.
+  window.addEventListener('error', function (e) {
+    var box = document.getElementById('errbox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'errbox';
+      box.className = 'errbox';
+      document.body.appendChild(box);
+    }
+    box.textContent = (e.error && e.error.stack) ? e.error.stack : (e.message + ' @ ' + e.filename + ':' + e.lineno);
+  });
+</script>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+</head>
+<body>
+
+<canvas id="view"></canvas>
+
+<!-- ============ HUD ============ -->
+<div id="hud" class="hud">
+
+  <!-- FPV OSD -->
+  <div class="osd" id="osd">
+    <div class="osd-row osd-top">
+      <span class="osd-chip" id="osd-arm">DISARMED</span>
+      <span class="osd-chip" id="osd-env">MEADOW</span>
+      <span class="osd-chip" id="osd-mode">ACRO</span>
+      <span class="osd-chip" id="osd-input">KEYBOARD</span>
+    </div>
+    <div class="osd-row osd-bottom">
+      <span class="osd-num"><b id="osd-alt">0.0</b><i>ALT m</i></span>
+      <span class="osd-num"><b id="osd-spd">0.0</b><i>SPD km/h</i></span>
+      <span class="osd-num"><b id="osd-vsi">0.0</b><i>VSI m/s</i></span>
+      <span class="osd-num"><b id="osd-dist">0</b><i>DIST m</i></span>
+      <span class="osd-num"><b id="osd-batt">100</b><i>BATT %</i></span>
+      <span class="osd-num"><b id="osd-time">0:00</b><i>TIME</i></span>
+    </div>
+  </div>
+
+  <!-- Crosshair -->
+  <div class="crosshair" id="crosshair">
+    <div class="ch-h"></div><div class="ch-v"></div>
+    <div class="ch-horizon" id="horizon"></div>
+  </div>
+
+  <!-- Throttle bar -->
+  <div class="thr-wrap">
+    <div class="thr-track"><div class="thr-fill" id="thr-fill"></div></div>
+    <div class="thr-label">THR</div>
+  </div>
+
+  <!-- Course / gates -->
+  <div class="course" id="course">
+    <div class="course-line"><span id="course-name">COURSE</span></div>
+    <div class="course-line"><b id="course-next">GATE 1</b> <span id="course-count">0/0</span></div>
+    <div class="course-line course-time" id="course-timer">—</div>
+  </div>
+
+  <!-- Stick visualiser -->
+  <div class="sticks" id="sticks">
+    <div class="stick-box">
+      <svg viewBox="0 0 100 100" class="stick-svg">
+        <circle cx="50" cy="50" r="44" class="sk-ring" />
+        <line x1="6" y1="50" x2="94" y2="50" class="sk-axis" />
+        <line x1="50" y1="6" x2="50" y2="94" class="sk-axis" />
+        <circle cx="50" cy="50" r="9" class="sk-dot" id="dot-left" />
+      </svg>
+      <div class="stick-cap">THR / YAW</div>
+    </div>
+    <div class="stick-box">
+      <svg viewBox="0 0 100 100" class="stick-svg">
+        <circle cx="50" cy="50" r="44" class="sk-ring" />
+        <line x1="6" y1="50" x2="94" y2="50" class="sk-axis" />
+        <line x1="50" y1="6" x2="50" y2="94" class="sk-axis" />
+        <circle cx="50" cy="50" r="9" class="sk-dot" id="dot-right" />
+      </svg>
+      <div class="stick-cap">PITCH / ROLL</div>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">ESC settings &nbsp;·&nbsp; R reset &nbsp;·&nbsp; C view &nbsp;·&nbsp; Q arm</div>
+</div>
+
+<!-- ============ Start / pause overlay ============ -->
+<div class="screen" id="startscreen">
+  <div class="card">
+    <h1>FPV<span>SIM</span></h1>
+    <p class="sub">Browser quadcopter simulator — real radio or keyboard.</p>
+    <div class="modes">
+      <button class="big" id="btn-fly">FLY</button>
+    </div>
+    <div class="start-cols">
+      <div class="start-col">
+        <h3>Keyboard</h3>
+        <div class="krow"><kbd>W</kbd><kbd>S</kbd><span>Throttle (left stick)</span></div>
+        <div class="krow"><kbd>A</kbd><kbd>D</kbd><span>Yaw (left stick)</span></div>
+        <div class="krow"><kbd>&uarr;</kbd><kbd>&darr;</kbd><span>Pitch (right stick)</span></div>
+        <div class="krow"><kbd>&larr;</kbd><kbd>&rarr;</kbd><span>Roll (right stick)</span></div>
+        <div class="krow"><kbd>Q</kbd><span>Arm / disarm</span></div>
+      </div>
+      <div class="start-col">
+        <h3>Radio controller</h3>
+        <p class="tiny">Plug in your FPV radio in USB-joystick mode, press any stick, then open <b>ESC &rarr; Controller</b> to map channels. Axis assignment, inversion, deadzone and arm button are all configurable — settings persist.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Settings ============ -->
+<div class="screen hidden" id="settings">
+  <div class="card wide">
+    <h2>Settings</h2>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="ctl">Controller</button>
+      <button class="tab" data-tab="flt">Flight</button>
+      <button class="tab" data-tab="wld">World</button>
+    </div>
+
+    <div class="panel" id="tab-ctl">
+      <div class="row">
+        <label>Input device</label>
+        <div class="dev" id="pad-status">No controller detected — keyboard active.</div>
+      </div>
+      <div class="row">
+        <label>Axis monitor</label>
+        <div class="axes" id="axes"></div>
+      </div>
+      <div class="grid4" id="map-grid"></div>
+      <div class="row">
+        <label>Arm button</label>
+        <div class="inl">
+          <select id="arm-key"></select>
+          <button class="mini" id="learn-pad">Learn pad button</button>
+          <span class="tiny" id="learn-out"></span>
+        </div>
+      </div>
+      <div class="row"><label>Arm button (gamepad index)</label><div class="inl"><input type="number" id="arm-btn-idx" min="0" max="31" step="1" /><span class="tiny">0–31, or use Learn</span></div></div>
+    </div>
+
+    <div class="panel hidden" id="tab-flt">
+      <div class="row"><label>Flight mode</label><div class="inl"><select id="flight-mode"><option value="acro">Acro (rate)</option><option value="angle">Angle (self-level)</option></select></div></div>
+      <div class="row"><label>Roll / pitch rate <b class="val" id="v-rate">720°/s</b></label><input type="range" id="s-rate" min="180" max="1400" step="20" /></div>
+      <div class="row"><label>Yaw rate <b class="val" id="v-yaw">360°/s</b></label><input type="range" id="s-yaw" min="100" max="900" step="20" /></div>
+      <div class="row"><label>Stick expo <b class="val" id="v-expo">0.30</b></label><input type="range" id="s-expo" min="0" max="0.9" step="0.05" /></div>
+      <div class="row"><label>Camera tilt <b class="val" id="v-tilt">30°</b></label><input type="range" id="s-tilt" min="0" max="60" step="1" /></div>
+      <div class="row"><label>Thrust-to-weight <b class="val" id="v-twr">2.2</b></label><input type="range" id="s-twr" min="1.2" max="4" step="0.1" /></div>
+      <div class="row"><label>Propwash / wind <b class="val" id="v-wind">0.0</b></label><input type="range" id="s-wind" min="0" max="1" step="0.1" /></div>
+      <div class="row"><label>View</label><div class="inl"><select id="view-mode"><option value="fpv">FPV (onboard)</option><option value="chase">Chase cam</option><option value="los">Line of sight</option></select></div></div>
+      <div class="row"><label>Motor audio</label><div class="inl"><input type="checkbox" id="sound" /><span class="tiny">motor whine follows throttle</span></div></div>
+    </div>
+
+    <div class="panel hidden" id="tab-wld">
+      <div class="row"><label>Environment</label><div class="inl"><select id="env-select"></select></div></div>
+      <div class="row"><label>Time trial gates</label><div class="inl"><input type="checkbox" id="gates-on" /><span class="tiny">fly through rings in order</span></div></div>
+      <div class="row"><label>Show stick overlay</label><div class="inl"><input type="checkbox" id="show-sticks" /></div></div>
+      <div class="row"><label>Show FPV OSD</label><div class="inl"><input type="checkbox" id="show-osd" /></div></div>
+      <div class="row"><label>Camera shake</label><div class="inl"><input type="checkbox" id="shake" /></div></div>
+      <div class="row"><label>Reset</label><div class="inl"><button class="mini" id="btn-reset">Respawn at pad</button><button class="mini" id="btn-defaults">Restore defaults</button></div></div>
+      <p class="tiny dim">All settings are saved to this browser automatically.</p>
+    </div>
+
+    <div class="foot"><button class="big sm" id="btn-close">BACK TO FLIGHT</button></div>
+  </div>
+</div>
+
+<!-- ============ Crash ============ -->
+<div class="screen hidden" id="crashscreen">
+  <div class="card">
+    <h2 class="crash-t">CRASH</h2>
+    <p class="sub" id="crash-sub">Propellers destroyed.</p>
+    <button class="big" id="btn-respawn">RESPAWN</button>
+  </div>
+</div>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
